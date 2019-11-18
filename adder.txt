@@ -1,6 +1,6 @@
 module FA(a,b,c,s,co);
-input [7:0]a,b;
-output [8:0]s;
+input [15:0]a,b;
+output [16:0]s;
 output co;
 input c;
 Carry c1(a[0],b[0],c,s[0],cx0);
@@ -10,8 +10,16 @@ Carry c4(a[3],b[3],cx2,s[3],cx3);
 Carry c5(a[4],b[4],cx3,s[4],cx4);
 Carry c6(a[5],b[5],cx4,s[5],cx5);
 Carry c7(a[6],b[6],cx5,s[6],cx6);
-Carry c8(a[7],b[7],cx6,s[7],s[8]);
-assign co = s[8];
+Carry c8(a[7],b[7],cx6,s[7],cx7);
+Carry c9(a[8],b[8],cx7,s[8],cx8);
+Carry c10(a[9],b[9],cx8,s[9],cx9);
+Carry c11(a[10],b[10],cx9,s[10],cx10);
+Carry c12(a[11],b[11],cx10,s[11],cx11);
+Carry c13(a[12],b[12],cx11,s[12],cx12);
+Carry c14(a[13],b[13],cx12,s[13],cx13);
+Carry c15(a[14],b[14],cx13,s[14],cx14);
+Carry c16(a[15],b[15],cx14,s[15],s[16]);
+assign co = s[16];
 endmodule
 
 
@@ -34,10 +42,10 @@ endmodule
 module TestCarry;
 
           // Inputs
-          reg [7:0] a;
-          reg [7:0] b;
+          reg [15:0] a;
+          reg [15:0] b;
           reg c;
-          wire [8:0] s;
+          wire [16:0] s;
           wire co;
           FA uut (
                    .a(a),
@@ -48,11 +56,10 @@ module TestCarry;
           );
           initial begin
                    // Initialize Inputs
-                   a = 8'b01000010;
-                   b = 8'b10111101;
+                   a = 16'b1100000011111000;
+                   b = 16'b1011110100001101;
                    c = 0;
-                   #10
+                   #100
                    $display("%3b|%3b|%1b|%3b|%1b",a,b,c,s,co);
           end
 endmodule
-

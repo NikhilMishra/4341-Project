@@ -1,89 +1,133 @@
 //compiled with icarus iverilog v10.1 stable, downloaded from ubuntu apt-get
-
-module FA(a,b,c,s,co);
-input [7:0]a,b;
-output [8:0]s;
-output co;
-input c;
-Carry c1(a[0],b[0],c,s[0],cx0);
-Carry c2(a[1],b[1],cx0,s[1],cx1);
-Carry c3(a[2],b[2],cx1,s[2],cx2);
-Carry c4(a[3],b[3],cx2,s[3],cx3);
-Carry c5(a[4],b[4],cx3,s[4],cx4);
-Carry c6(a[5],b[5],cx4,s[5],cx5);
-Carry c7(a[6],b[6],cx5,s[6],cx6);
-Carry c8(a[7],b[7],cx6,s[7],s[8]);
-assign co = s[8];
+module Alu_add (input [15:0] a, b, output [31:0] res);
 endmodule
 
-
-module Carry(a,b,c,s,co);
-input a,b;
-input c;
-output s,co;
-wire out4;
-wire out6;
-and (out1,a,b);
-xor (out2,a,b);
-and (out3,out2,c);
-or (out4,out3,out1);
-assign co = out4;
-xor (out5,a,b);
-xor (out6,out5,c);
-assign s = out6;
+module Alu_sub (input [15:0] a, b, output [31:0] res);
 endmodule
 
-module Alu_int (input [15:0] a, b, input [1:0] op, output [31:0] res, output err);
+module Alu_mult (input [15:0] a, b, output [31:0] res);
+endmodule
+
+module Alu_div (input [15:0] a, b, output [31:0] res, output err);
+endmodule
+
+module Alu_int (input [15:0] a, b, input [1:0] op, output reg [31:0] res, output reg err);
+  wire [31:0] addout;
+  wire [31:0] subout;
+  wire [31:0] multout;
+  wire [31:0] divout;
+  wire diverr;
+  Alu_add M0(a,b,addout);
+  Alu_sub M1(a,b,subout);
+  Alu_mult M2(a,b,multout);
+  Alu_div M3(a,b,divout,diverr);
+
+  always @(*) begin
+    case(op)
+      0: assign res = addout;
+      1: assign res = subout;
+      2: assign res = multout;
+      3: assign res = divout;
+    endcase
+    if (op == 3) begin
+      err = diverr;
+    end else begin
+      err = 0;
+    end
+  end
 endmodule
 
 module Alu_not (input [15:0] a, output [31:0] res);
+  generate
+  genvar i;
+  for (i=0; i<16; i=i+1)
+  begin
+    not G0(res[i], a[i]);
+  end
+  for (i=16; i<32; i=i+1)
+  begin
+    assign res[i] = 0;
+  end
+  endgenerate
 endmodule
 
 module Alu_xor (input [15:0] a, b, output [31:0] res);
+  generate
+  genvar i;
+  for (i=0; i<16; i=i+1)
+  begin
+    xor G0(res[i], b[i], a[i]);
+  end
+  for (i=16; i<32; i=i+1)
+  begin
+    assign res[i] = 0;
+  end
+  endgenerate
 endmodule
 
 module Alu_or (input [15:0] a, b, output [31:0] res);
+  generate
+  genvar i;
+  for (i=0; i<16; i=i+1)
+  begin
+    or G0(res[i], b[i], a[i]);
+  end
+  for (i=16; i<32; i=i+1)
+  begin
+    assign res[i] = 0;
+  end
+  endgenerate
 endmodule
 
 module Alu_and (input [15:0] a, b, output [31:0] res);
-  always @ (posedge Clock)
+  generate
+  genvar i;
+  for (i=0; i<16; i=i+1)
   begin
-    wire [5:0] i;
-    for (i=0; i<16; i=i+1)
-    begin
-      //delay?
-      and G0(a[i], b[i], res[i]);
-    end
-    for (i=16; i<32; i=i+1)
-    begin
-      //delay?
-      assign res[i] = 0;
-    end
+    and G0(res[i], b[i], a[i]);
+  end
+  for (i=16; i<32; i=i+1)
+  begin
+    assign res[i] = 0;
+  end
+  endgenerate
+endmodule
+
+module Alu_bool (input [15:0] a, b, input [1:0] op, output reg [31:0] res);
+  wire [31:0] andout;
+  wire [31:0] orout;
+  wire [31:0] xorout;
+  wire [31:0] notout;
+  Alu_and M0(a,b,andout);
+  Alu_or M1(a,b,orout);
+  Alu_xor M2(a,b,xorout);
+  Alu_not M3(a,notout);
+
+  always @(*) begin
+    case(op)
+      0: assign res = andout;
+      1: assign res = orout;
+      2: assign res = xorout;
+      3: assign res = notout;
+    endcase
   end
 endmodule
 
-module Alu_bool (input [15:0] a, b, input [1:0] op, output [31:0] res);
-  always @ (posedge Clock)
-  begin
-    if (op == 0)
-      Alu_and M0(a, b, res);
-    if (op == 1)
-      Alu_or  M1(a, b, res);
-    if (op == 2)
-      Alu_xor M2(a, b, res);
-    if (op == 3)
-      Alu_not M3(a, res);
-  end
-endmodule
+module Alu (input [15:0] a, b, input mode, input [1:0] op, output reg [31:0] res, output reg err);
+  wire [31:0] boolout;
+  wire [31:0] intout;
+  wire interr;
+  Alu_bool M0 (a, b, op, boolout);
+  Alu_int  M1 (a, b, op, intout, interr);
 
-module Alu (input [15:0] a, b, input mode, input [1:0] op, output [31:0] res, output err);
-  always @ (posedge Clock)
-  begin
-    if (mode == 0)
-      assign err = 0;
-      Alu_bool M0(a, b, op, res);
-    if (mode == 1)
-      Alu_int  M1(a, b, op, res, err);
+  always @(*) begin
+    if (mode == 0) begin
+      res = boolout;
+      err = 0;
+    end else begin
+      res = intout;
+      err = interr;
+    end
   end
 endmodule
 
@@ -107,14 +151,16 @@ module testbench();
   
   for(mode=0; mode<2; mode=mode+1)
   begin
+    #5
     for(op=0; op<4; op=op+1)
     begin
-      for (a = 0; a < 65536; a = a + 1) 
+      #5
+      for (a = 0; a < 2; a = a + 1) 
       begin
         #5
-        for (b = 0; b < 65536; b = b + 1) 
+        for (b = 0; b < 2; b = b + 1) 
         begin
-          #5
+          #50
           $display ("%16d|%16d|%d|%2d|%32d|%d",a,b,mode,op,res,err);
         end 
       end
